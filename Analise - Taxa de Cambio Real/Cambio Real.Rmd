@@ -1,0 +1,164 @@
+---
+title: "Grafico Cambio Real"
+author: "Pedro Colangelo"
+date: "2024-12-19"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r carregar_bibliotecas, echo=FALSE}
+
+# Carregar bibliotecas
+
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(ggthemes)
+
+```
+
+```{r carregar_dados, echo=FALSE}
+
+# Carregar dados
+dados <- read_excel("Dados Cambio IPCA CPI.xlsx")
+
+```
+
+``` {r tratar_datas, echo=FALSE}
+
+# Tratar as datas
+dados <- dados %>%
+  dplyr::mutate(Data = as.Date(Data))
+
+```
+
+```{r IPCA_Acumulado, echo=FALSE}
+
+# Adiciona "IPCA Acumulado"
+
+dados <- dados %>%
+  dplyr::mutate(IPCA_Acumulado = {
+    n <- n()  # Número de linhas
+    acumulado <- numeric(n)  # Vetor 
+    acumulado[n] <- 1  # Última linha 
+    
+    for (i in (n-1):1) {
+      acumulado[i] <- acumulado[i + 1] * (1 + IPCA[i + 1])
+    }
+    
+    acumulado
+  })
+
+
+```
+
+``` {r Variacao_CPI, echo=FALSE}
+
+# Adiciona "Variacao_CPI"
+
+dados <- dados %>%
+  dplyr::mutate(Variacao_CPI = {
+    n <- n()  # Número de linhas
+    variacao <- numeric(n)  # Vetor 
+    variacao[1] <- 0  # Primeiro valor
+    
+    for (i in 2:n) {
+      variacao[i] <- (CPI[i] / CPI[i - 1]) - 1
+    }
+    
+    variacao
+    
+  })
+
+```
+
+``` {r CPI_Acumulado, echo = FALSE}
+
+# Adiciona "CPI_Acumulado"
+
+dados <- dados %>%
+  dplyr::mutate(CPI_Acumulado = {
+    n <- n()  # Número de linhas
+    acumulado <- numeric(n)  # Vetor 
+    acumulado[n] <- 1  # Última linha
+    
+    for (i in (n-1):1) {
+      acumulado[i] <- acumulado[i + 1] * (1 + Variacao_CPI[i + 1])
+    }
+    
+    acumulado
+  })
+
+```
+
+``` {r Cambio_Real_R$/US$, echo=FALSE}
+
+# Adiciona "Cambio_Real_R$/US$"
+
+dados <- dados %>%
+  dplyr::mutate(`Cambio_Real_R$/US$` = `Cambio Nominal R$/US$` * (IPCA_Acumulado / CPI_Acumulado))
+
+```
+
+``` {r Cambio_valor_atual, echo=FALSE}
+
+# Capturar maiores valores da série de câmbio real
+
+maiores_valores <- dados %>%
+  dplyr::arrange(desc(`Cambio_Real_R$/US$`)) %>% 
+  dplyr::slice(1:10) %>%                         
+  dplyr::select(Data, `Cambio_Real_R$/US$`)     
+
+# Exibir datas
+maiores_valores
+
+```
+
+``` {r criar_grafico, echo=FALSE}
+
+# Criar gráfico
+
+ggplot(dados, aes(x = Data, y = `Cambio_Real_R$/US$`)) +
+  geom_line(color = "red", linewidth = 1.2) +
+  geom_hline(yintercept = 6, linetype = "dashed", color = "black", size = 0.2) + 
+  geom_text(
+    data = dados %>% filter(Data == as.Date("2002-09-01")), 
+    aes(label = "Set/02"),
+    vjust = -1, color = "black", size = 4, fontface = "bold" 
+  ) +
+  geom_text(
+    data = dados %>% filter(Data == as.Date("2020-10-01")), 
+    aes(label = "Out/20"),
+    vjust = -1, color = "black", size = 4, fontface = "bold"
+  ) +
+  geom_point(
+    data = dados %>% filter(Data == as.Date("2002-09-01") | Data == as.Date("2020-10-01")),
+    aes(x = Data, y = `Cambio_Real_R$/US$`),
+    shape = 16, color = "black", size = 3
+  ) +
+  labs(
+    title = "Taxa de Câmbio Real (R$/US$)",
+    x = NULL,   
+    y = NULL,    
+    caption = "Dados: Banco Central do Brasil e FED St. Louis"
+  ) +
+  theme_classic() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.text.x = element_text(size = 10, face = "bold", color = "black"),
+    axis.text.y = element_text(size = 10, face = "bold", color = "black"),
+    plot.caption = element_text(size = 8, hjust = 1, face = "italic", color = "black")
+  ) +
+  scale_x_date(
+    date_breaks = "2 year",   
+    date_labels = "%Y"        
+  ) +
+  scale_y_continuous(
+    breaks = c(3, 4, 5, 6, 7, 8), 
+    labels = scales::label_dollar(prefix = "R$", big.mark = ".", decimal.mark = ",", accuracy = 0.01) 
+  )
+
+```
