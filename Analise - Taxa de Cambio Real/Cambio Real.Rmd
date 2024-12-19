@@ -134,8 +134,14 @@ ggplot(dados, aes(x = Data, y = `Cambio_Real_R$/US$`)) +
     aes(label = "Out/20"),
     vjust = -1, color = "black", size = 4, fontface = "bold"
   ) +
+  geom_text(
+    data = dados %>% filter(Data == as.Date("2001-10-01")), 
+    aes(label = "Out/01"),
+    vjust = -1, color = "black", size = 4, fontface = "bold",
+    hjust = 0.8
+  ) +
   geom_point(
-    data = dados %>% filter(Data == as.Date("2002-09-01") | Data == as.Date("2020-10-01")),
+    data = dados %>% filter(Data == as.Date("2002-09-01") | Data == as.Date("2020-10-01") | Data == as.Date("2001-10-01")),
     aes(x = Data, y = `Cambio_Real_R$/US$`),
     shape = 16, color = "black", size = 3
   ) +
