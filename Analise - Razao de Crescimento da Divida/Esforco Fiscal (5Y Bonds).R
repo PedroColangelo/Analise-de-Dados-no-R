@@ -76,6 +76,21 @@ paises_subset_sem_focus <- paises_subset %>%
 brasil_focus <- data %>%
   dplyr::filter(Países == "Brazil (Focus)")
 
+# Teste para escolher variável que definirá o tamanho de cada ponto no gráfico
+scores <- data %>%
+  mutate(
+    d_s_di  = Divida_PIB/((1+PIB_Real)*(1+`Inflação`)),
+    d_s_dg  = - (1+Bonds_Cinco_Anos)*Divida_PIB/(((1+PIB_Real)^2)*(1+`Inflação`)),
+    d_s_dpi = - (1+Bonds_Cinco_Anos)*Divida_PIB/((1+PIB_Real)*((1+`Inflação`)^2))
+  ) %>%
+  summarise(
+    score_i  = mean(abs(d_s_di))  * sd(Bonds_Cinco_Anos),
+    score_g  = mean(abs(d_s_dg))  * sd(PIB_Real),
+    score_pi = mean(abs(d_s_dpi)) * sd(`Inflação`)
+  )
+
+# Score_i foi o maior
+
 # base para regressões (sem o Brazil Focus)
 reg_df <- dplyr::bind_rows(paises_subset_sem_focus, brasil)
 
@@ -88,25 +103,25 @@ ggplot() +
   geom_point(
     data = paises_subset_sem_focus,
     aes(x = Divida_PIB, y = Primario_Est_pctPIB,
-        fill = Classificação, size = `Inflação`),
+        fill = Classificação, size = Bonds_Cinco_Anos),
     shape = 21, colour = "grey30", stroke = 0.6, alpha = 0.9
   ) +
   geom_point(
     data = brasil,
     aes(x = Divida_PIB, y = Primario_Est_pctPIB,
-        size = `Inflação`, fill = Classificação),
+        size = Bonds_Cinco_Anos, fill = Classificação),
     shape = 21, colour = "black", stroke = 1.4, show.legend = FALSE
   ) +
   geom_text(
     data = brasil,
     aes(x = Divida_PIB, y = Primario_Est_pctPIB),
     label = "Brasil", vjust = -1, fontface = "bold",
-    nudge_y = 0.2
+    nudge_y = 0.5
   ) +
   geom_point(
     data = brasil_focus,
     aes(x = Divida_PIB, y = Primario_Est_pctPIB,
-        size = `Inflação`, fill = Classificação),
+        size = Bonds_Cinco_Anos, fill = Classificação),
     shape = 21, colour = "black", stroke = 1.2, alpha = 0.45,
     show.legend = FALSE
   ) +
@@ -114,7 +129,7 @@ ggplot() +
     data = brasil_focus,
     aes(x = Divida_PIB, y = Primario_Est_pctPIB),
     label = "Brasil (Focus)", vjust = -1, fontface = "italic",
-    nudge_y = 0.4
+    nudge_y = 0.6
   ) +
   geom_smooth(
     data = reg_df %>%
@@ -164,11 +179,11 @@ ggplot() +
   scale_fill_manual(values = c("Desenvolvido" = des_col, "Subdesenvolvido" = sub_col)) +
   scale_x_continuous(labels = scales::label_percent(accuracy = 1)) +
   scale_y_continuous(labels = scales::label_number(accuracy = 0.1, suffix = "%")) +
-  scale_size_continuous(
-    range = c(2, 12),
-    breaks = c(0.03, 0.05, 0.10),
-    labels = scales::label_percent(accuracy = 1),
-    name = "Inflação (π)"
+  scale_size_area(
+    max_size = 18,           # aumenta contraste
+    breaks   = c(0.03, 0.06, 0.10, 0.15),
+    labels   = scales::label_percent(accuracy = 1),
+    name     = "Juro nominal (i)"
   ) +
   guides(
     fill = guide_legend(order = 1, override.aes = list(shape = 21, colour = "grey30", stroke = 0.6, size = 5)),
@@ -184,7 +199,7 @@ ggplot() +
   )
 
 ggsave("Grafico_Primario_vs_Divida_com_Regressoes_estetica_unificada_GRANDE.png",
-       width = 7.5, height = 3.92, dpi = 600)
+       width = 7.5, height = 3.92, dpi = 1000)
 
 
 
